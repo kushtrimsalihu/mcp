@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * Fake artisan for the MCP-AI demo fixture.
+ *
+ * `php artisan route:list --json` is the only subcommand the MCP server ever
+ * invokes. This stub returns a canned JSON array that mirrors the shape of a
+ * real `route:list --json` call so `inspect_laravel_routes` can be exercised
+ * without installing Laravel.
+ *
+ * Any other subcommand is a no-op — the MCP server does not call them.
+ */
+
+$args = $argv ?? [];
+
+if (in_array('route:list', $args, true)) {
+    echo json_encode([
+        [
+            'method'     => 'GET|HEAD',
+            'uri'        => 'api/users',
+            'name'       => 'users.index',
+            'action'     => 'App\\Http\\Controllers\\UserController@index',
+            'middleware' => ['api', 'throttle:60,1'],
+        ],
+        [
+            'method'     => 'GET|HEAD',
+            'uri'        => 'api/users/{id}',
+            'name'       => 'users.show',
+            'action'     => 'App\\Http\\Controllers\\UserController@show',
+            'middleware' => ['api', 'auth:sanctum'],
+        ],
+        [
+            'method'     => 'POST',
+            'uri'        => 'api/users',
+            'name'       => 'users.store',
+            'action'     => 'App\\Http\\Controllers\\UserController@store',
+            'middleware' => ['api', 'auth:sanctum'],
+        ],
+        [
+            'method'     => 'GET',
+            'uri'        => 'admin/users/{id}',
+            'name'       => null,
+            // Deliberately no explicit auth middleware — demo talking-point only.
+            // A real reviewer would check inherited group middleware before concluding.
+            'action'     => 'App\\Http\\Controllers\\Admin\\UserAdminController@show',
+            'middleware' => ['web'],
+        ],
+    ], JSON_PRETTY_PRINT);
+    exit(0);
+}
+
+// Default: silent success. Nothing else is called.
+exit(0);

@@ -1,0 +1,91 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * MCP-AI STDIO server entrypoint.
+ *
+ * Reads MCP JSON-RPC messages from STDIN and writes responses to STDOUT.
+ * All diagnostic logging goes to STDERR so the JSON-RPC stream stays clean.
+ */
+
+use McpAi\Config\Config;
+use McpAi\Logger\StderrLogger;
+use McpAi\Tools\GetGitDiff;
+use McpAi\Tools\InspectLaravelRoutes;
+use McpAi\Tools\SearchLaravelCode;
+use PhpMcp\Server\Defaults\BasicContainer;
+use PhpMcp\Server\Server;
+use PhpMcp\Server\Transports\StdioServerTransport;
+use PhpMcp\Server\Transports\StreamableHttpServerTransport;
+use Psr\Log\LoggerInterface;
+
+$projectRoot = dirname(__DIR__);
+require $projectRoot . '/vendor/autoload.php';
+
+try {
+    $logger = new StderrLogger(getenv('MCP_AI_LOG_LEVEL') ?: 'info');
+    $logger->info('MCP-AI server starting', ['project_root' => $projectRoot]);
+
+    $config = Config::load($projectRoot);
+    $logger->info('MCP-AI config loaded', ['laravel_root' => $config->laravelRoot]);
+
+    $container = new BasicContainer();
+    $container->set(LoggerInterface::class, $logger);
+    $container->set(Config::class, $config);
+    $container->set(SearchLaravelCode::class,    new SearchLaravelCode($config, $logger));
+    $container->set(GetGitDiff::class,           new GetGitDiff($config, $logger));
+    $container->set(InspectLaravelRoutes::class, new InspectLaravelRoutes($config, $logger));
+
+    $server = Server::make()
+        ->withServerInfo('mcp-ai-laravel-dev', '0.1.0')
+        ->withLogger($logger)
+        ->withContainer($container)
+        ->withTool(
+            [SearchLaravelCode::class, 'search'],
+            'search_laravel_code',
+            'Search PHP/Blade source files under the configured Laravel repo for a substring or regex, with path/extension allowlisting and secret-file exclusion.'
+        )
+        ->withTool(
+            [GetGitDiff::class, 'diff'],
+            'get_git_diff',
+            'Return a bounded git diff (unstaged, staged, or branch-vs-base) for the configured Laravel repo. Read-only; never modifies the working tree.'
+        )
+        ->withTool(
+            [InspectLaravelRoutes::class, 'list'],
+            'inspect_laravel_routes',
+            'Run `php artisan route:list --json` in the configured Laravel repo and return the parsed, optionally-filtered route table.'
+        )
+        ->build();
+
+    // Transport selection:
+    //   --transport=stdio|http   (defaults to env MCP_AI_TRANSPORT, else stdio)
+    //   --host=127.0.0.1 --port=8765  (http only)
+    //
+    // STDIO is what Claude Desktop / Cursor / Codex expect out of the box.
+    // Note: php-mcp/server's STDIO transport is NOT supported on native Windows
+    // (PHP non-blocking pipe limitation); use WSL, or run with --transport=http.
+    $argvOpts = [];
+    foreach (array_slice($argv, 1) as $arg) {
+        if (preg_match('/^--([a-z-]+)=(.*)$/', $arg, $m) === 1) {
+            $argvOpts[$m[1]] = $m[2];
+        }
+    }
+    $transportName = $argvOpts['transport'] ?? (getenv('MCP_AI_TRANSPORT') ?: 'stdio');
+    $host          = $argvOpts['host'] ?? (getenv('MCP_AI_HTTP_HOST') ?: '127.0.0.1');
+    $port          = (int) ($argvOpts['port'] ?? (getenv('MCP_AI_HTTP_PORT') ?: 8765));
+
+    if ($transportName === 'http') {
+        $logger->info('Starting HTTP (streamable) transport', ['host' => $host, 'port' => $port]);
+        $server->listen(new StreamableHttpServerTransport($host, $port, 'mcp'));
+    } else {
+        $server->listen(new StdioServerTransport());
+    }
+
+    $logger->info('MCP-AI server stopped cleanly');
+    exit(0);
+} catch (\Throwable $e) {
+    fwrite(STDERR, "[MCP-AI CRITICAL] " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n");
+    exit(1);
+}

@@ -1,0 +1,65 @@
+<?php
+
+/*
+ * MCP-AI Laravel Dev Productivity server configuration.
+ *
+ * Copy this file to `config/mcp-ai.php` and edit the values.
+ * You can also override everything via environment variables:
+ *   - MCP_AI_LARAVEL_ROOT        absolute path to the Laravel repo to inspect
+ *   - MCP_AI_MAX_SEARCH_FILES    max files visited by search_laravel_code (default 2000)
+ *   - MCP_AI_MAX_SEARCH_RESULTS  max match rows returned (default 100)
+ *   - MCP_AI_MAX_FILE_BYTES      max file size scanned (default 1 MB)
+ *   - MCP_AI_MAX_EXCERPT_LEN     max excerpt length per match (default 240)
+ *   - MCP_AI_MAX_DIFF_BYTES      max git diff bytes returned (default 200 KB)
+ *   - MCP_AI_GIT_TIMEOUT         git process timeout seconds (default 15)
+ *   - MCP_AI_ROUTE_TIMEOUT       artisan route:list timeout seconds (default 30)
+ */
+
+return [
+    // Absolute path to the Laravel repository that this MCP server will inspect.
+    // Must exist. Must be a directory. Must contain either `artisan` or `composer.json`.
+    'laravel_root' => getenv('MCP_AI_LARAVEL_ROOT') ?: 'C:\\inetpub\\wwwroot\\your-laravel-project',
+
+    'search' => [
+        'max_files'        => (int) (getenv('MCP_AI_MAX_SEARCH_FILES') ?: 2000),
+        'max_results'      => (int) (getenv('MCP_AI_MAX_SEARCH_RESULTS') ?: 100),
+        'max_file_bytes'   => (int) (getenv('MCP_AI_MAX_FILE_BYTES') ?: 1048576),
+        'max_excerpt_len'  => (int) (getenv('MCP_AI_MAX_EXCERPT_LEN') ?: 240),
+
+        // Directories (relative to laravel_root) that are allowed to be searched.
+        // An empty list means "all non-excluded directories under the project root".
+        'allowed_directories' => [
+            // 'app',
+            // 'routes',
+            // 'config',
+            // 'database',
+            // 'resources/views',
+            // 'tests',
+        ],
+
+        // File extensions that may be searched. Keep this allowlist narrow.
+        'allowed_extensions' => ['php', 'blade.php'],
+
+        // Directory and file patterns always excluded from search.
+        // These are matched against the path relative to the project root.
+        'excluded_path_patterns' => [
+            'vendor/', 'node_modules/', 'storage/', 'bootstrap/cache/',
+            'public/build/', 'public/hot', '.git/', '.idea/', '.vscode/',
+        ],
+
+        // File-name patterns always excluded. Protects secrets.
+        'excluded_file_patterns' => [
+            '.env', '.env.*', '*.pem', '*.key', '*.p12', '*.pfx',
+            'id_rsa*', '*.sqlite', '*.sqlite-journal', '*.log',
+        ],
+    ],
+
+    'git' => [
+        'max_diff_bytes' => (int) (getenv('MCP_AI_MAX_DIFF_BYTES') ?: 204800),
+        'timeout'        => (int) (getenv('MCP_AI_GIT_TIMEOUT') ?: 15),
+    ],
+
+    'routes' => [
+        'timeout' => (int) (getenv('MCP_AI_ROUTE_TIMEOUT') ?: 30),
+    ],
+];

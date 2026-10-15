@@ -1,0 +1,5 @@
+/vendor/
+/.phpunit.cache/
+/config/mcp-ai.php
+.phpunit.result.cache
+composer.lock

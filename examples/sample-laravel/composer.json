@@ -1,0 +1,6 @@
+{
+  "name": "mcpai-demo/sample-laravel",
+  "description": "Fixture used by MCP-AI demos. NOT a runnable Laravel app — only enough files for the three MCP tools to produce realistic output.",
+  "type": "project",
+  "license": "MIT"
+}
