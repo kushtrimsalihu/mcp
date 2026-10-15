@@ -1,4 +1,4 @@
-# MCP-AI — Laravel Developer Productivity (MCP Proof of Concept)
+# MCP-AI - Laravel Developer Productivity (MCP Proof of Concept)
 
 A small, internal **Model Context Protocol (MCP) server** written in PHP. It
 exposes three read-only tools that let an AI assistant inspect a configured
